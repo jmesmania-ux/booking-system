@@ -32,7 +32,7 @@ const SERVICES = [
 const FEATURES = [
   {
     icon: MapPin,
-    title: 'Home Service',
+    title: 'Home and Hotel Services',
     description: 'Enjoy your massage in the comfort of your own space',
   },
   {
@@ -104,7 +104,7 @@ export default function HomePage() {
               Relax. Recharge. We Come to You.
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 text-pretty">
-              Experience therapeutic massage tailored to your needs, delivered to your doorstep by John Michael Sawal, a certified professional with years of expertise.
+              Experience therapeutic massage tailored to your needs, delivered to your doorstep by "King", a certified professional with years of expertise.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" className="text-base" asChild>
@@ -124,7 +124,7 @@ export default function HomePage() {
         <section className="py-16 px-4 bg-card border-y">
           <div className="container mx-auto max-w-5xl">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">King Massage Therapy</h2>
+              <h2 className="text-3xl font-bold mb-4">King's Massage</h2>
               <p className="text-muted-foreground text-lg mb-8">Professional Home Service Massage</p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -288,7 +288,7 @@ export default function HomePage() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <Leaf className="w-5 h-5 text-primary" />
-                <span className="font-semibold text-lg">King Massage Therapy</span>
+                <span className="font-semibold text-lg">King's Massage</span>
               </div>
               <p className="text-sm text-muted-foreground">Professional home service massage in Laguna</p>
             </div>
@@ -310,7 +310,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="border-t pt-8 text-center text-sm text-muted-foreground">
-            <p>&copy; 2026 King Massage Therapy. All rights reserved. Professional massage services by John Michael Sawal.</p>
+            <p>&copy; 2026 King Massage Therapy. All rights reserved. Professional massage services by "King".</p>
           </div>
         </div>
       </footer>
