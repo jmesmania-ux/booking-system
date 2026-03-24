@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { FcGoogle } from 'react-icons/fc' // Google icon
 
 export default function Page() {
   const [email, setEmail] = useState('')
@@ -21,11 +22,12 @@ export default function Page() {
   const [repeatPassword, setRepeatPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false) // Separate Google loading state
   const router = useRouter()
+  const supabase = createClient() // Initialize once
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
@@ -54,6 +56,27 @@ export default function Page() {
     }
   }
 
+  const handleGoogleSignUp = async () => {
+    setIsGoogleLoading(true)
+    setError(null)
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo:
+            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
+            `${window.location.origin}/protected`,
+        },
+      })
+      if (error) throw error
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'Google sign-up failed')
+    } finally {
+      setIsGoogleLoading(false)
+    }
+  }
+
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm">
@@ -61,7 +84,7 @@ export default function Page() {
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">Sign up</CardTitle>
-              <CardDescription>Create a new account</CardDescription>
+              <CardDescription>Create a new account to book appointments</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSignUp}>
@@ -78,9 +101,7 @@ export default function Page() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <div className="flex items-center">
-                      <Label htmlFor="password">Password</Label>
-                    </div>
+                    <Label htmlFor="password">Password</Label>
                     <Input
                       id="password"
                       type="password"
@@ -90,9 +111,7 @@ export default function Page() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <div className="flex items-center">
-                      <Label htmlFor="repeat-password">Repeat Password</Label>
-                    </div>
+                    <Label htmlFor="repeat-password">Repeat Password</Label>
                     <Input
                       id="repeat-password"
                       type="password"
@@ -103,15 +122,29 @@ export default function Page() {
                   </div>
                   {error && <p className="text-sm text-red-500">{error}</p>}
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Creating an account...' : 'Sign up'}
+                    {isLoading ? 'Creating account...' : 'Sign up'}
+                  </Button>
+
+                  {/* Divider & Google Button */}
+                  <div className="flex items-center gap-2 py-2">
+                    <div className="flex-1 h-px bg-gray-200"></div>
+                    <span className="text-sm text-gray-500">Or sign up with</span>
+                    <div className="flex-1 h-px bg-gray-200"></div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={handleGoogleSignUp}
+                    className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 transition-colors"
+                    disabled={isGoogleLoading}
+                  >
+                    <FcGoogle className="mr-2 h-5 w-5" />
+                    {isGoogleLoading ? 'Processing...' : 'Continue with Google'}
                   </Button>
                 </div>
                 <div className="mt-4 text-center text-sm">
                   Already have an account?{' '}
-                  <Link
-                    href="/auth/login"
-                    className="underline underline-offset-4"
-                  >
+                  <Link href="/auth/login" className="underline underline-offset-4">
                     Login
                   </Link>
                 </div>
