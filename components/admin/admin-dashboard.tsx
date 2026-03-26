@@ -1,9 +1,3 @@
-i just need the add add on button on each booking. please  update my code
-
-
-update my current admin-dashboard
-
-
 'use client'
 
 import React, { useState } from 'react'
