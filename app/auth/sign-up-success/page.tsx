@@ -1,85 +1,65 @@
 'use client'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
 
 export default function Page() {
-  const [processing, setProcessing] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isGoogleUser, setIsGoogleUser] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search)
-      const code = urlParams.get('code')
-      
-      if (!code) {
-        setProcessing(false)
-        return
-      }
-
+    const checkSession = async () => {
       try {
-        // Exchange code with cookie-based client
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (error) throw error
-
-        // Check user provider
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user?.identities?.[0]?.provider === 'google') {
-          setIsGoogleUser(true)
+        const { data: { user }, error } = await supabase.auth.getUser()
+        if (error) {
+          if (error.message.includes('PKCE code verifier not found')) {
+            setError('Please try signing in again - clear cache if issue persists')
+          } else {
+            setError(error.message)
+          }
+        } else if (user) {
+          setIsLoggedIn(true)
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to complete sign-up')
+        setError('Failed to check session')
       } finally {
-        setProcessing(false)
+        setIsLoading(false)
       }
     }
-
-    handleAuthCallback()
-  }, [supabase])
-
+    checkSession()
+  }, [])
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Thank you for signing up!</CardTitle>
-            <CardDescription>
-              {processing 
-                ? 'Finalizing your account...' 
-                : error 
-                  ? error 
-                  : 'Your account is ready to use.'
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!processing && !error && (
-              <>
-                {isGoogleUser ? (
-                  <Link href="/book">
-                    <Button className="w-full">Go to Book Appointment</Button>
+    <div className="flex min-h-svh items-center justify-center p-6 md:p-10 bg-gray-50">
+      <Card className="w-full max-w-sm shadow-md">
+        <div className="p-6">
+          <h2 className="text-2xl font-bold text-center">Thank you for signing up!</h2>
+          {isLoading && <p className="text-center text-gray-500">Finalizing your account...</p>}
+          {error && <p className="text-center text-red-500">{error}</p>}
+          {!isLoading && !error && (
+            <>
+              {isLoggedIn ? (
+                <Link href="/book" className="block w-full">
+                  <Button className="w-full mt-4">Go to Bookings</Button>
+                </Link>
+              ) : (
+                <>
+                  <p className="text-center text-gray-600 mt-4">
+                    Check your email for a verification link!
+                  </p>
+                  <Link href="/auth/login" className="block text-center mt-4 text-primary">
+                    Already verified? Login here
                   </Link>
-                ) : (
-                  <Link href="/auth/login">
-                    <Button className="w-full">Go to Login</Button>
-                  </Link>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </Card>
     </div>
   )
 }
