@@ -9,11 +9,20 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { Sparkles, Clock, Plus, MessageSquare } from 'lucide-react'
+import { Sparkles, Clock, Plus, MessageSquare, Info, Timer } from 'lucide-react'
+
+// Define add-on services
+const ADD_ON_SERVICES = [
+  { name: 'None', price: 0 },
+  { name: 'Ear Candling', price: 150 },
+  { name: 'Hot Stone', price: 200 },
+  { name: 'Ventusa', price: 200 },
+  { name: 'Fire Massage', price: 200 }
+]
 
 export function StepService() {
-  const { formData, updateFormData, nextStep } = useBookingStore()
-
+  const { formData, updateFormData, nextStep, calculateTotalDuration } = useBookingStore()
+  const totalDuration = calculateTotalDuration()
   const isValid = formData.service && formData.duration
 
   return (
@@ -91,9 +100,18 @@ export function StepService() {
             </Button>
           ))}
         </div>
+
+        {/* NEW: Total Duration Display */}
+        <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-md text-primary font-medium border border-primary/20">
+          <Timer className="h-5 w-5 flex-shrink-0" />
+          <div>
+            <span>Total Session Duration:</span>
+            <span className="text-lg ml-2">{totalDuration} minutes</span>
+          </div>
+        </div>
       </div>
 
-      {/* NEW: Special Requests Section with Dropdowns */}
+      {/* Existing Special Requests Section */}
       <div className="space-y-4 border-t pt-4">
         <Label className="text-base font-medium flex items-center gap-2">
           <MessageSquare className="w-4 h-4 text-primary" />
@@ -170,6 +188,53 @@ export function StepService() {
             onChange={(e) => updateFormData({ specialRequests: e.target.value })}
           />
         </div>
+      </div>
+
+      {/* NEW: Add-On Services Section */}
+      <div className="space-y-4 border-t pt-4">
+        <Label className="text-base font-medium flex items-center gap-2">
+          <Plus className="w-4 h-4 text-primary" />
+          Add-On Services
+        </Label>
+
+        {/* Add-On Note */}
+        <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-md text-amber-800 text-sm border border-amber-200">
+          <Info className="h-5 w-5 mt-0.5 flex-shrink-0" />
+          <p><strong>Important Note:</strong> All add-on services include an additional 15 minutes added to your total session duration.</p>
+        </div>
+
+        {/* Add-On Selection Dropdown */}
+        <div className="space-y-2">
+          <Label htmlFor="add-on-service">Select Add-On (Optional)</Label>
+          <Select 
+            value={formData.addOnService || 'None'} 
+            onValueChange={(value) => {
+              const selected = ADD_ON_SERVICES.find(s => s.name === value)
+              updateFormData({ addOnService: selected.name, addOnPrice: selected.price })
+            }}
+          >
+            <SelectTrigger id="add-on-service">
+              <SelectValue placeholder="Choose an add-on service" />
+            </SelectTrigger>
+            <SelectContent>
+              {ADD_ON_SERVICES.map(service => (
+                <SelectItem 
+                  key={service.name} 
+                  value={service.name}
+                >
+                  {service.name} {service.price > 0 ? `(+₱${service.price})` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Add-On Confirmation */}
+        {formData.addOnService && formData.addOnService !== 'None' && (
+          <div className="p-2 bg-green-50 rounded-md text-sm text-green-700 border border-green-200">
+            ✔ {formData.addOnService} added (+₱{formData.addOnPrice} | +15 minutes to total duration)
+          </div>
+        )}
       </div>
 
       {/* Existing Continue Button */}
