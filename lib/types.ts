@@ -2,6 +2,11 @@ export type ServiceType = 'Swedish' | 'Shiatsu' | 'Thai' | 'Combination'
 export type BookingStatus = 'pending' | 'approved' | 'rejected'
 export type UserRole = 'admin' | 'client'
 
+// New types for special request options
+export type PressurePreference = 'no-preference' | 'light' | 'medium' | 'firm'
+export type FocusArea = 'full-body' | 'back-shoulders' | 'legs-feet' | 'neck-upper-back' | 'other'
+export type AdditionalNeeds = 'none' | 'oil-allergy' | 'table-assistance' | 'quiet-session' | 'aromatherapy' | 'other'
+
 export interface User {
   id: string
   email: string
@@ -20,6 +25,11 @@ export interface Booking {
   time: string
   duration: number
   extra_minutes: number
+  // New fields to store preferences in bookings
+  pressure_preference: PressurePreference
+  focus_area: FocusArea
+  additional_needs: AdditionalNeeds
+  special_requests: string
   status: BookingStatus
   payment_proof_url: string | null
   created_at: string
@@ -42,6 +52,11 @@ export interface BookingFormData {
   time: string
   duration: number
   extraMinutes: number
+  // New special request fields added here
+  pressurePreference: PressurePreference
+  focusArea: FocusArea
+  additionalNeeds: AdditionalNeeds
+  specialRequests: string
 }
 
 export interface TimeSlot {
