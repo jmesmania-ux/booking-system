@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Header } from '@/components/header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { BookingsTable } from './bookings-table'
 import { ClientsList } from './clients-list'
 import type { Booking, User } from '@/lib/types'
-import { Calendar, Users, LayoutDashboard, Search, Filter, Download, Bell } from 'lucide-react'
+import { Calendar, Users, LayoutDashboard, Search, Filter, Download, Bell, DollarSign } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,29 +17,66 @@ interface AdminDashboardProps {
   users: User[]
 }
 
+// Format Philippine Pesos currency
+const formatPHP = (amount: number) => {
+  return new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    minimumFractionDigits: 0
+  }).format(amount)
+}
+
+// Get current month for earnings calculation
+const getCurrentMonthRange = () => {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), 1)
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  return { start, end }
+}
+
 export function AdminDashboard({ bookings, users }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState('bookings')
   const [searchQuery, setSearchQuery] = useState('')
   const [bookingFilter, setBookingFilter] = useState('all')
 
-  // Calculate stats
+  // Calculate core stats
   const pendingCount = bookings.filter((b) => b.status === 'pending').length
   const approvedCount = bookings.filter((b) => b.status === 'approved').length
+  const completedCount = bookings.filter((b) => b.status === 'completed').length
   const totalClients = users.length
+
+  // Calculate earnings stats (current month only)
+  const { start, end } = getCurrentMonthRange()
+  const monthlyCompletedBookings = bookings.filter(b => 
+    b.status === 'completed' && 
+    new Date(b.created_at) >= start && 
+    new Date(b.created_at) <= end
+  )
+  const monthlyApprovedBookings = bookings.filter(b => 
+    b.status === 'approved' && 
+    new Date(b.created_at) >= start && 
+    new Date(b.created_at) <= end
+  )
+  const totalMonthlyEarnings = monthlyCompletedBookings.reduce((sum, b) => sum + (b.earnings || 0), 0)
+  const pendingEarnings = monthlyApprovedBookings.reduce((sum, b) => sum + (b.earnings || 0), 0)
 
   // Filter bookings/clients based on search and filters
   const filteredBookings = bookings.filter(booking => {
     const matchesFilter = bookingFilter === 'all' || booking.status === bookingFilter
-    const matchesSearch = booking.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          booking.service.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          booking.users.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          booking.mobile.includes(searchQuery)
+    const searchLower = searchQuery.toLowerCase().trim()
+    const matchesSearch = searchLower === '' ||
+                          booking.name.toLowerCase().includes(searchLower) ||
+                          booking.service.toLowerCase().includes(searchLower) ||
+                          booking.users.email.toLowerCase().includes(searchLower) ||
+                          booking.mobile.includes(searchLower)
     return matchesFilter && matchesSearch
   })
 
   const filteredUsers = users.filter(user => {
-    return user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           user.id.includes(searchQuery)
+    const searchLower = searchQuery.toLowerCase().trim()
+    return searchLower === '' ||
+           user.email.toLowerCase().includes(searchLower) ||
+           user.id.includes(searchLower)
   })
 
   // Handle stats card clicks to filter content
@@ -62,7 +99,7 @@ export function AdminDashboard({ bookings, users }: AdminDashboardProps) {
               </div>
               <div>
                 <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-                <p className="text-sm text-muted-foreground">Manage bookings and clients</p>
+                <p className="text-sm text-muted-foreground">Manage bookings, clients, and earnings</p>
               </div>
             </div>
 
@@ -78,8 +115,8 @@ export function AdminDashboard({ bookings, users }: AdminDashboardProps) {
             </Button>
           </div>
 
-          {/* Enhanced Stats Cards - Interactive */}
-          <div className="grid gap-4 md:grid-cols-3 mb-8">
+          {/* Core Stats Cards */}
+          <div className="grid gap-4 md:grid-cols-3 mb-6">
             <Card className="border-amber-100 hover:shadow-md transition-all cursor-pointer" onClick={() => handleStatsClick('pending')}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-amber-700">
@@ -112,6 +149,11 @@ export function AdminDashboard({ bookings, users }: AdminDashboardProps) {
               <CardContent>
                 <div className="text-2xl font-bold">{approvedCount}</div>
                 <p className="text-xs text-muted-foreground">Confirmed sessions</p>
+                {approvedCount > 0 && (
+                  <Badge className="mt-2 bg-green-100 text-green-800">
+                    {formatPHP(pendingEarnings)} pending earnings
+                  </Badge>
+                )}
               </CardContent>
             </Card>
 
@@ -127,6 +169,49 @@ export function AdminDashboard({ bookings, users }: AdminDashboardProps) {
               <CardContent>
                 <div className="text-2xl font-bold">{totalClients}</div>
                 <p className="text-xs text-muted-foreground">Registered users</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Earnings Stats Tiles */}
+          <div className="grid gap-4 md:grid-cols-2 mb-8">
+            <Card className="border-emerald-100 hover:shadow-md transition-all">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-emerald-700">
+                  Monthly Earnings (Completed)
+                </CardTitle>
+                <div className="p-2 bg-emerald-100 rounded-full">
+                  <DollarSign className="h-4 w-4 text-emerald-700" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-emerald-800">{formatPHP(totalMonthlyEarnings)}</div>
+                <p className="text-xs text-muted-foreground">
+                  From {start.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} to {end.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+                </p>
+                <Badge className="mt-2 bg-emerald-100 text-emerald-800">
+                  {completedCount} completed services
+                </Badge>
+              </CardContent>
+            </Card>
+
+            <Card className="border-indigo-100 hover:shadow-md transition-all">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-indigo-700">
+                  Pending Earnings (Approved)
+                </CardTitle>
+                <div className="p-2 bg-indigo-100 rounded-full">
+                  <DollarSign className="h-4 w-4 text-indigo-700" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-indigo-800">{formatPHP(pendingEarnings)}</div>
+                <p className="text-xs text-muted-foreground">
+                  From {approvedCount} confirmed bookings
+                </p>
+                <Badge className="mt-2 bg-indigo-100 text-indigo-800">
+                  Mark as completed to finalize
+                </Badge>
               </CardContent>
             </Card>
           </div>
@@ -154,6 +239,7 @@ export function AdminDashboard({ bookings, users }: AdminDashboardProps) {
                     <TabsTrigger value="all">All</TabsTrigger>
                     <TabsTrigger value="pending">Pending</TabsTrigger>
                     <TabsTrigger value="approved">Approved</TabsTrigger>
+                    <TabsTrigger value="completed">Completed</TabsTrigger>
                     <TabsTrigger value="rejected">Rejected</TabsTrigger>
                   </TabsList>
                 </Tabs>
