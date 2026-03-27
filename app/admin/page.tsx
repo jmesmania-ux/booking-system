@@ -28,8 +28,7 @@ export default async function AdminPage() {
     redirect('/')
   }
 
-  // 3. Fetch Bookings with ALL required fields for the UI
-  // IMPORTANT: We explicitly select 'status' to ensure buttons render correctly
+  // 3. Fetch Bookings with UPDATED column names from your database
   const { data: bookings, error: bookingError } = await supabase
     .from('bookings')
     .select(`
@@ -43,22 +42,25 @@ export default async function AdminPage() {
       time,
       duration,
       extra_minutes,
-      add_on_service,
-      add_on_price,
-      total_price,
+      status,
+      payment_proof_url,
+      created_at,
       pressure_preference,
       focus_area,
+      additional_needs,
       special_requests,
-      status,
-      created_at
+      add_ons,
+      total_price,
+      earnings
     `)
     .order('created_at', { ascending: false })
 
   if (bookingError) {
-    console.error('Error fetching bookings:', bookingError)
+    // This will help you see if there are still column mismatches in your terminal
+    console.error('❌ Database Fetch Error:', bookingError.message)
   }
 
-  // 4. Fetch Client list (Optional, for user management)
+  // 4. Fetch Client list
   const { data: users } = await supabase
     .from('users')
     .select('*')
@@ -81,7 +83,9 @@ function AdminLoading() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-white">
       <div className="w-12 h-12 border-4 border-slate-200 border-t-emerald-500 rounded-full animate-spin mb-4" />
-      <p className="text-slate-500 font-bold animate-pulse">Loading King's Massage Dashboard...</p>
+      <p className="text-slate-500 font-bold animate-pulse text-sm uppercase tracking-widest">
+        Loading King's Massage Dashboard...
+      </p>
     </div>
   )
 }
