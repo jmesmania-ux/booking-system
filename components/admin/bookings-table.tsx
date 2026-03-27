@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { 
-  User, Info, ChevronDown, ChevronUp, Timer
+  User, ChevronDown, ChevronUp, Clock as TimerIcon
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -24,18 +24,29 @@ interface BookingsTableProps {
   onApprove: (id: string) => void
   onReject: (id: string) => void
   onComplete: (id: string, finalEarnings: number) => void
+  onExtendTime?: (id: string, minutes: number) => void
+  onAddService?: (id: string, service: string) => void
 }
 
-export function BookingsTable({ bookings, onApprove, onReject, onComplete }: BookingsTableProps) {
+export function BookingsTable({
+  bookings,
+  onApprove,
+  onReject,
+  onComplete,
+  onExtendTime,
+  onAddService
+}: BookingsTableProps) {
   const router = useRouter()
   const supabase = createClient()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [earningsInputs, setEarningsInputs] = useState<Record<string, number>>({})
+  const [selectedExtend, setSelectedExtend] = useState<Record<string, string>>({})
+  const [selectedAddOn, setSelectedAddOn] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const initialInputs: Record<string, number> = {}
-    bookings.forEach(b => { 
-      initialInputs[b.id] = b.earnings || b.total_price || 0 
+    bookings.forEach(b => {
+      initialInputs[b.id] = b.earnings ?? b.total_price ?? 0
     })
     setEarningsInputs(initialInputs)
   }, [bookings])
@@ -44,13 +55,16 @@ export function BookingsTable({ bookings, onApprove, onReject, onComplete }: Boo
     <div className="flex flex-col gap-3 pb-24 w-full px-2">
       {bookings.map(booking => {
         const isExpanded = expandedId === booking.id
-        const status = booking.status?.toLowerCase() || 'pending'
-        
+        const status = (booking.status || 'pending').toLowerCase()
+
         return (
-          <Card key={booking.id} className="border border-slate-100 shadow-sm rounded-3xl overflow-hidden w-full bg-white">
+          <Card
+            key={booking.id}
+            className="border border-slate-100 shadow-sm rounded-[2.5rem] overflow-hidden w-full max-w-3xl bg-white"
+          >
             <CardContent className="p-0">
-              {/* Main Tile - Matches Client List Header */}
-              <div 
+              {/* Main Tile */}
+              <div
                 className="py-4 px-5 flex items-center justify-between cursor-pointer active:bg-slate-50 transition-colors"
                 onClick={() => setExpandedId(isExpanded ? null : booking.id)}
               >
@@ -67,13 +81,17 @@ export function BookingsTable({ bookings, onApprove, onReject, onComplete }: Boo
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  <Badge className={cn(
-                    "px-3 py-1 rounded-lg text-[9px] font-black uppercase border-none tracking-wider",
-                    status === 'pending' ? "bg-amber-100 text-amber-600" : 
-                    status === 'approved' ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500"
-                  )}>
+                  <Badge
+                    className={cn(
+                      "px-3 py-1 rounded-lg text-[9px] font-black uppercase border-none tracking-wider",
+                      status === 'pending' ? "bg-amber-100 text-amber-600" :
+                      status === 'approved' ? "bg-emerald-100 text-emerald-600" :
+                      status === 'completed' ? "bg-blue-100 text-blue-600" :
+                      "bg-slate-100 text-slate-500"
+                    )}
+                  >
                     {status}
                   </Badge>
                   {isExpanded ? <ChevronUp className="h-4 w-4 text-slate-300" /> : <ChevronDown className="h-4 w-4 text-slate-300" />}
@@ -83,7 +101,6 @@ export function BookingsTable({ bookings, onApprove, onReject, onComplete }: Boo
               {/* Expanded Details */}
               {isExpanded && (
                 <div className="px-5 pb-6 pt-2 space-y-5 bg-white border-t border-slate-50 animate-in fade-in slide-in-from-top-1">
-                  
                   {/* Stats Grid */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
@@ -100,16 +117,70 @@ export function BookingsTable({ bookings, onApprove, onReject, onComplete }: Boo
                   <div className="space-y-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Active Services</span>
                     <div className="flex flex-wrap gap-2">
-                      <Badge className="bg-white text-slate-600 border border-slate-100 font-bold text-[11px] px-3 py-1.5 rounded-xl shadow-sm">
+                      <Badge className="bg-white text-slate-600 border border-slate-100 font-bold text-[11px] px-3 py-1.5 rounded-full shadow-sm">
                         {booking.service} ({booking.duration}m)
                       </Badge>
                       {booking.add_ons?.map((ao: any, i: number) => (
-                        <Badge key={i} className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold text-[11px] px-3 py-1.5 rounded-xl">
+                        <Badge
+                          key={i}
+                          className="bg-emerald-100 text-emerald-700 font-bold text-[11px] px-3 py-1.5 rounded-full shadow-sm"
+                        >
                           {ao.name} (+₱{ao.price})
                         </Badge>
                       ))}
                     </div>
                   </div>
+
+                  {/* Admin Actions (when approved) */}
+                  {status === 'approved' && (
+                    <div className="bg-slate-50 rounded-2xl p-4 mb-2 border border-dashed border-slate-200">
+                      <p className="text-xs font-black text-slate-600 mb-3">Admin Actions</p>
+
+                      <div className="flex flex-col md:flex-row md:items-center md:gap-3 gap-3">
+                        {/* Extend Time */}
+                        <div className="flex items-center gap-2 w-full md:w-1/2">
+                          <TimerIcon className="w-4 h-4 text-slate-500" />
+                          <select
+                            className="border rounded-2xl px-4 py-2 text-sm font-bold text-slate-700 shadow-sm hover:bg-emerald-50 transition-all duration-200 w-full"
+                            value={selectedExtend[booking.id] ?? ''}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              const val = e.target.value
+                              setSelectedExtend(prev => ({ ...prev, [booking.id]: val }))
+                              const minutes = val ? parseInt(val, 10) : 0
+                              if (minutes && onExtendTime) onExtendTime(booking.id, minutes)
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <option value="">Extend Time</option>
+                            <option value="15">+15m</option>
+                            <option value="30">+30m</option>
+                            <option value="60">+60m</option>
+                          </select>
+                        </div>
+
+                        {/* Add-on Services */}
+                        <div className="flex items-center gap-2 w-full md:w-1/2">
+                          <select
+                            className="border rounded-2xl px-4 py-2 text-sm font-bold text-slate-700 shadow-sm hover:bg-emerald-50 transition-all duration-200 w-full"
+                            value={selectedAddOn[booking.id] ?? ''}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              const val = e.target.value
+                              setSelectedAddOn(prev => ({ ...prev, [booking.id]: val }))
+                              if (val && onAddService) onAddService(booking.id, val)
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <option value="">Add Service</option>
+                            {ADD_ON_OPTIONS.map((opt, i) => (
+                              <option key={i} value={opt.name}>{opt.name} (+₱{opt.price})</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Footer Actions */}
                   <div className="flex items-center justify-between pt-5 border-t border-slate-100">
@@ -117,11 +188,14 @@ export function BookingsTable({ bookings, onApprove, onReject, onComplete }: Boo
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Earnings</span>
                       <div className="flex items-center">
                         <span className="text-slate-900 font-black text-2xl mr-0.5">₱</span>
-                        <Input 
+                        <Input
                           type="number"
-                          className="w-20 h-9 font-black text-2xl border-none bg-transparent p-0 focus-visible:ring-0 text-slate-900"
-                          value={earningsInputs[booking.id] || ''}
-                          onChange={(e) => setEarningsInputs({...earningsInputs, [booking.id]: Number(e.target.value)})}
+                          className="w-24 h-9 font-black text-2xl border-none bg-transparent p-0 focus-visible:ring-0 text-slate-900"
+                          value={earningsInputs[booking.id] ?? ''}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            setEarningsInputs({ ...earningsInputs, [booking.id]: Number(e.target.value) })
+                          }}
                           onClick={(e) => e.stopPropagation()}
                         />
                       </div>
@@ -130,14 +204,14 @@ export function BookingsTable({ bookings, onApprove, onReject, onComplete }: Boo
                     <div className="flex items-center gap-3">
                       {status === 'pending' && (
                         <>
-                          <button 
+                          <button
                             type="button"
                             className="text-red-500 font-bold text-sm px-2 py-2 active:opacity-50 transition-opacity"
                             onClick={(e) => { e.stopPropagation(); onReject(booking.id); }}
                           >
                             Reject
                           </button>
-                          <button 
+                          <button
                             type="button"
                             className="bg-slate-900 text-white rounded-2xl h-12 px-8 flex items-center justify-center font-bold text-xs shadow-md active:scale-95 transition-transform"
                             onClick={(e) => { e.stopPropagation(); onApprove(booking.id); }}
@@ -146,18 +220,26 @@ export function BookingsTable({ bookings, onApprove, onReject, onComplete }: Boo
                           </button>
                         </>
                       )}
+
                       {status === 'approved' && (
-                        <button 
+                        <button
                           type="button"
-                          className="bg-emerald-600 text-white rounded-2xl h-12 px-10 flex items-center justify-center font-bold text-xs shadow-lg shadow-emerald-100 active:scale-95 transition-transform"
-                          onClick={(e) => { e.stopPropagation(); onComplete(booking.id, earningsInputs[booking.id]); }}
+                          className="bg-emerald-600 text-white rounded-2xl h-12 px-10 flex items-center justify-center font-bold text-xs shadow-lg active:scale-95 transition-transform"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const finalEarnings = earningsInputs[booking.id] ?? 0
+                            onComplete(booking.id, finalEarnings)
+                          }}
                         >
                           Finish Session
                         </button>
                       )}
+
+                      {status === 'completed' && (
+                        <span className="text-sm font-bold text-slate-500">Completed</span>
+                      )}
                     </div>
                   </div>
-
                 </div>
               )}
             </CardContent>
