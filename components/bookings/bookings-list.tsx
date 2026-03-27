@@ -6,11 +6,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Empty } from '@/components/ui/empty'
+// Added 'addHours' to helper fix potential UTC shifts if needed, though 'T00:00:00' is better
 import { format, parseISO, startOfDay, isBefore, isSameDay } from 'date-fns'
-import { Calendar, Clock, MapPin, Sparkles, MessageCircle, CheckCircle, Clock3, XCircle } from 'lucide-react'
+import { Calendar, Clock, MapPin, Sparkles, MessageCircle, CheckCircle, Clock3, XCircle, Star } from 'lucide-react'
 import { ChatDialog } from '@/components/chat/chat-dialog'
 import { CancelDialog } from './cancel-dialog' 
-import { RatingDialog } from './rating-dialog' // Import the new dialog
+import { RatingDialog } from './rating-dialog' 
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -39,11 +40,25 @@ export function BookingsList({ bookings, userId }: BookingsListProps) {
   const [chatOpen, setChatOpen] = useState(false)
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false)
-  const [selectedBooking, setSelectedBooking] = useState<{id: string, service: string} | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
   
+  // Track the full booking object for the dialogs
+  const [selectedBooking, setSelectedBooking] = useState<{id: string, service: string} | null>(null)
+  
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+
+  // Helper to safely parse dates without timezone shifts
+  const safeParseDate = (dateStr: string) => {
+    // If it's just YYYY-MM-DD, append time to force local interpretation
+    const normalized = dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`
+    return parseISO(normalized)
+  }
+
+  const handleOpenChat = (id: string, service: string) => {
+    setSelectedBooking({ id, service })
+    setChatOpen(true)
+  }
 
   const handleOpenCancelModal = (id: string) => {
     setSelectedBooking({ id, service: '' })
@@ -74,14 +89,14 @@ export function BookingsList({ bookings, userId }: BookingsListProps) {
   const today = startOfDay(new Date())
 
   const upcomingBookings = bookings.filter(booking => {
-    const bookingDate = startOfDay(parseISO(booking.date as string))
+    const bookingDate = startOfDay(safeParseDate(booking.date as string))
     const isFinalized = booking.status === 'cancelled' || booking.status === 'completed'
     const isUpcomingDate = isSameDay(bookingDate, today) || !isBefore(bookingDate, today)
     return isUpcomingDate && !isFinalized
   })
 
   const pastBookings = bookings.filter(booking => {
-    const bookingDate = startOfDay(parseISO(booking.date as string))
+    const bookingDate = startOfDay(safeParseDate(booking.date as string))
     const isFinalized = booking.status === 'cancelled' || booking.status === 'completed'
     const isActuallyPast = isBefore(bookingDate, today) && !isSameDay(bookingDate, today)
     return isFinalized || isActuallyPast
@@ -97,7 +112,6 @@ export function BookingsList({ bookings, userId }: BookingsListProps) {
 
   return (
     <div className="max-w-2xl mx-auto px-4 pb-20">
-      {/* Upcoming Section */}
       <section className="mb-10">
         <div className="flex items-center gap-2 mb-6">
           <div className="bg-green-100 p-2 rounded-full">
@@ -112,7 +126,7 @@ export function BookingsList({ bookings, userId }: BookingsListProps) {
               <BookingCard 
                 key={booking.id} 
                 booking={booking} 
-                onChatOpen={() => setChatOpen(true)} 
+                onChatOpen={() => handleOpenChat(booking.id, booking.service)} 
                 onCancel={() => handleOpenCancelModal(booking.id)}
               />
             ))
@@ -125,7 +139,6 @@ export function BookingsList({ bookings, userId }: BookingsListProps) {
         </div>
       </section>
 
-      {/* Past Section */}
       {pastBookings.length > 0 && (
         <section>
           <div className="flex items-center gap-2 mb-6 opacity-60">
@@ -139,7 +152,7 @@ export function BookingsList({ bookings, userId }: BookingsListProps) {
               <BookingCard 
                 key={booking.id} 
                 booking={booking} 
-                onChatOpen={() => setChatOpen(true)} 
+                onChatOpen={() => handleOpenChat(booking.id, booking.service)} 
                 onRate={() => handleOpenRatingModal(booking.id, booking.service)}
                 isPast 
               />
@@ -148,13 +161,22 @@ export function BookingsList({ bookings, userId }: BookingsListProps) {
         </section>
       )}
 
-      <ChatDialog open={chatOpen} onOpenChange={setChatOpen} userId={userId} />
+      {/* Pass the dynamic bookingId and serviceName to ChatDialog */}
+      <ChatDialog 
+        open={chatOpen} 
+        onOpenChange={setChatOpen} 
+        userId={userId} 
+        bookingId={selectedBooking?.id || null}
+        serviceName={selectedBooking?.service || "Support Chat"}
+      />
+      
       <CancelDialog 
         isOpen={isCancelModalOpen} 
         onClose={() => setIsCancelModalOpen(false)} 
         onConfirm={handleConfirmCancel} 
         isLoading={isSubmitting} 
       />
+      
       {selectedBooking && (
         <RatingDialog
           isOpen={isRatingModalOpen}
@@ -199,7 +221,8 @@ function BookingCard({ booking, onChatOpen, onCancel, onRate, isPast = false }: 
           <div className={`grid grid-cols-2 gap-3 p-3 rounded-2xl ${isPast ? 'bg-gray-200/20' : 'bg-gray-50'}`}>
             <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
               <Calendar className="w-4 h-4 text-gray-400" />
-              {format(parseISO(booking.date), 'MMM dd, yyyy')}
+              {/* Force local interpretation to prevent March 27 becoming March 26 */}
+              {format(parseISO(booking.date.includes('T') ? booking.date : `${booking.date}T00:00:00`), 'MMM dd, yyyy')}
             </div>
             <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
               <Clock className="w-4 h-4 text-gray-400" />
