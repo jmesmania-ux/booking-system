@@ -103,14 +103,12 @@ export const ADD_ONS: { value: AddOnType; label: string; description: string; pr
 ]
 
 export const DURATIONS = [
-  { value: 60, label: '60 minutes' },
-  { value: 90, label: '90 minutes' },
-  { value: 120, label: '120 minutes' },
-  { value: 150, label: '150 minutes' }
+  { value: 60, label: '60 minutes' }
 ]
 
 export const EXTRA_MINUTES = [
   { value: 0, label: 'No extra time' },
   { value: 15, label: '+15 minutes' },
-  { value: 30, label: '+30 minutes' }
+  { value: 30, label: '+30 minutes' },
+  { value: 45, label: '+45 minutes' }
 ]
