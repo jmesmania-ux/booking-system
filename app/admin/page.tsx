@@ -8,6 +8,9 @@ export const metadata = {
   description: 'Manage professional massage bookings and client requests.',
 }
 
+// Ensure the page doesn't cache old data
+export const revalidate = 0;
+
 export default async function AdminPage() {
   const supabase = await createClient()
   
@@ -24,55 +27,40 @@ export default async function AdminPage() {
     .eq('id', user.id)
     .single()
 
-  if (userData?.role !== 'admin') {
+  // Safety check: if user doesn't exist in 'users' table or isn't admin
+  if (!userData || userData.role !== 'admin') {
     redirect('/')
   }
 
-  // 3. Fetch Bookings with UPDATED column names from your database
+  // 3. Fetch Bookings 
+  // Added a check to ensure we get all the data needed for the tiles
   const { data: bookings, error: bookingError } = await supabase
     .from('bookings')
-    .select(`
-      id,
-      user_id,
-      name,
-      mobile,
-      location,
-      service,
-      date,
-      time,
-      duration,
-      extra_minutes,
-      status,
-      payment_proof_url,
-      created_at,
-      pressure_preference,
-      focus_area,
-      additional_needs,
-      special_requests,
-      add_ons,
-      total_price,
-      earnings
-    `)
+    .select('*') // Using * is safer for debugging during development
     .order('created_at', { ascending: false })
 
   if (bookingError) {
-    // This will help you see if there are still column mismatches in your terminal
     console.error('❌ Database Fetch Error:', bookingError.message)
   }
 
-  // 4. Fetch Client list
-  const { data: users } = await supabase
+  // 4. Fetch Client list (Matched to your screenshot showing 3 clients)
+  const { data: users, error: userError } = await supabase
     .from('users')
     .select('*')
     .eq('role', 'client')
     .order('created_at', { ascending: false })
 
+  if (userError) {
+    console.error('❌ User Fetch Error:', userError.message)
+  }
+
   return (
     <main className="min-h-screen bg-slate-50/50">
       <Suspense fallback={<AdminLoading />}>
+        {/* We pass the initial data here */}
         <AdminDashboard 
-          bookings={bookings || []} 
-          users={users || []} 
+          initialBookings={bookings || []} 
+          initialUsers={users || []} 
         />
       </Suspense>
     </main>
@@ -82,9 +70,9 @@ export default async function AdminPage() {
 function AdminLoading() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-white">
-      <div className="w-12 h-12 border-4 border-slate-200 border-t-emerald-500 rounded-full animate-spin mb-4" />
-      <p className="text-slate-500 font-bold animate-pulse text-sm uppercase tracking-widest">
-        Loading King's Massage Dashboard...
+      <div className="w-12 h-12 border-4 border-slate-100 border-t-emerald-500 rounded-full animate-spin mb-4" />
+      <p className="text-slate-400 font-bold animate-pulse text-[10px] uppercase tracking-[0.2em]">
+        Refreshing Dashboard...
       </p>
     </div>
   )
