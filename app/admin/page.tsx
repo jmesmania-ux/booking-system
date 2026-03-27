@@ -1,30 +1,23 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AdminDashboard } from '@/components/admin/admin-dashboard'
-import { Suspense } from 'react' // For loading state
+import { Suspense } from 'react'
 
 export const metadata = {
-  title: 'Admin Dashboard | Serenity Touch',
-  description: 'Manage bookings and communicate with clients.',
+  title: "Admin Dashboard | King's Massage",
+  description: 'Manage professional massage bookings and client requests.',
 }
 
-// Add search params type for optional server-side filtering
-interface AdminPageProps {
-  searchParams?: {
-    q?: string
-    status?: string
-  }
-}
-
-export default async function AdminPage({ searchParams }: AdminPageProps) {
+export default async function AdminPage() {
   const supabase = await createClient()
+  
+  // 1. Verify Authentication
   const { data: { user } } = await supabase.auth.getUser()
-
-  // Auth & role checks (unchanged)
   if (!user) {
     redirect('/auth/login?redirect=/admin')
   }
 
+  // 2. Verify Admin Role
   const { data: userData } = await supabase
     .from('users')
     .select('role')
@@ -35,65 +28,60 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     redirect('/')
   }
 
-  // Extract search/filter params if present
-  const searchQuery = searchParams?.q || ''
-  const bookingStatus = searchParams?.status || ''
-
-  // ------------------------------
-  // UPDATED: Enhanced Bookings Fetch with Optional Filters
-  // ------------------------------
-  let bookingsQuery = supabase
+  // 3. Fetch Bookings with ALL required fields for the UI
+  // IMPORTANT: We explicitly select 'status' to ensure buttons render correctly
+  const { data: bookings, error: bookingError } = await supabase
     .from('bookings')
-    .select('*, users!inner(email)') // Keep your existing relation
+    .select(`
+      id,
+      user_id,
+      name,
+      mobile,
+      location,
+      service,
+      date,
+      time,
+      duration,
+      extra_minutes,
+      add_on_service,
+      add_on_price,
+      total_price,
+      pressure_preference,
+      focus_area,
+      special_requests,
+      status,
+      created_at
+    `)
     .order('created_at', { ascending: false })
 
-  // Add server-side filtering if search/filter params exist
-  if (searchQuery) {
-    bookingsQuery = bookingsQuery.or(
-      `name.ilike.%${searchQuery}%, service.ilike.%${searchQuery}%, mobile.ilike.%${searchQuery}%, users.email.ilike.%${searchQuery}%`
-    )
+  if (bookingError) {
+    console.error('Error fetching bookings:', bookingError)
   }
 
-  if (bookingStatus && bookingStatus !== 'all') {
-    bookingsQuery = bookingsQuery.eq('status', bookingStatus)
-  }
-
-  const { data: bookings } = await bookingsQuery
-
-  // ------------------------------
-  // UPDATED: Enhanced Users Fetch with Optional Search
-  // ------------------------------
-  let usersQuery = supabase
+  // 4. Fetch Client list (Optional, for user management)
+  const { data: users } = await supabase
     .from('users')
     .select('*')
     .eq('role', 'client')
     .order('created_at', { ascending: false })
 
-  if (searchQuery) {
-    usersQuery = usersQuery.or(
-      `email.ilike.%${searchQuery}%, id.ilike.%${searchQuery}%`
-    )
-  }
-
-  const { data: users } = await usersQuery
-
-  // ------------------------------
-  // UPDATED: Add Suspense for smoother loading
-  // ------------------------------
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex flex-col bg-background">
-        <div className="flex-1 py-8 px-4">
-          <div className="container mx-auto max-w-6xl flex items-center justify-center h-[50vh]">
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
-              <p className="text-lg font-medium">Loading admin dashboard...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    }>
-      <AdminDashboard bookings={bookings || []} users={users || []} />
-    </Suspense>
+    <main className="min-h-screen bg-slate-50/50">
+      <Suspense fallback={<AdminLoading />}>
+        <AdminDashboard 
+          bookings={bookings || []} 
+          users={users || []} 
+        />
+      </Suspense>
+    </main>
+  )
+}
+
+function AdminLoading() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-white">
+      <div className="w-12 h-12 border-4 border-slate-200 border-t-emerald-500 rounded-full animate-spin mb-4" />
+      <p className="text-slate-500 font-bold animate-pulse">Loading King's Massage Dashboard...</p>
+    </div>
   )
 }
