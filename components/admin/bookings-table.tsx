@@ -24,7 +24,7 @@ interface BookingsTableProps {
   bookings: any[]
   onApprove: (id: string) => void
   onReject: (id: string) => void
-  onComplete: (id: string, finalEarnings: number) => void // Updated to accept final price
+  onComplete: (id: string, finalEarnings: number) => void
 }
 
 export function BookingsTable({ bookings, onApprove, onReject, onComplete }: BookingsTableProps) {
@@ -33,7 +33,6 @@ export function BookingsTable({ bookings, onApprove, onReject, onComplete }: Boo
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [earningsInputs, setEarningsInputs] = useState<Record<string, number>>({})
 
-  // Initialize inputs with the current total price or existing earnings
   useEffect(() => {
     const initialInputs: Record<string, number> = {}
     bookings.forEach(b => { 
@@ -58,11 +57,10 @@ export function BookingsTable({ bookings, onApprove, onReject, onComplete }: Boo
       add_ons: updatedAddOns, 
       total_price: newTotal, 
       duration: newDuration,
-      earnings: newTotal // Keep earnings synced during add-on phase
+      earnings: newTotal
     }).eq('id', booking.id)
 
     if (!error) {
-      // Update local input state so it doesn't "jump" back to old value
       setEarningsInputs(prev => ({ ...prev, [booking.id]: newTotal }))
       router.refresh()
     }
@@ -93,25 +91,25 @@ export function BookingsTable({ bookings, onApprove, onReject, onComplete }: Boo
   }
 
   return (
-    <div className="flex flex-col gap-6 pb-24">
+    <div className="flex flex-col gap-6 pb-24 px-4">
       {bookings.map(booking => {
-        // Safe status check for button visibility
         const status = booking.status?.toLowerCase() || 'pending'
         
         return (
-          <Card key={booking.id} className="overflow-hidden border-none shadow-xl ring-1 ring-slate-100 rounded-[2rem]">
+          <Card key={booking.id} className="overflow-hidden border-none shadow-xl ring-1 ring-slate-100 rounded-[2.5rem]">
             <CardContent className="p-0">
               {/* Header */}
               <div className="p-6 flex justify-between items-start bg-white border-b border-slate-50">
                 <div>
-                  <h3 className="font-black text-slate-900 text-xl tracking-tight">{booking.service}</h3>
-                  <p className="text-sm text-slate-500 font-bold flex items-center gap-1.5 mt-1">
+                  <h3 className="font-extrabold text-slate-900 text-2xl tracking-tight">{booking.service}</h3>
+                  <p className="text-sm text-slate-500 font-semibold flex items-center gap-1.5 mt-1">
                     <User className="h-4 w-4 text-emerald-500" /> {booking.name}
                   </p>
                 </div>
                 <Badge className={cn(
-                  "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-none",
-                  status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                  "px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border-none",
+                  status === 'pending' ? "bg-amber-100 text-amber-700" : 
+                  status === 'cancelled' || status === 'rejected' ? "bg-red-50 text-red-600" : "bg-emerald-100 text-emerald-700"
                 )}>
                   {booking.status}
                 </Badge>
@@ -120,19 +118,19 @@ export function BookingsTable({ bookings, onApprove, onReject, onComplete }: Boo
               {/* Date/Time Row */}
               <div className="grid grid-cols-2 border-b border-slate-50 bg-slate-50/30">
                 <div className="p-5 border-r border-slate-50 flex items-center gap-3">
-                  <Calendar className="h-5 w-5 text-emerald-500" />
+                  <Calendar className="h-5 w-5 text-emerald-500/70" />
                   <div>
-                    <span className="text-[10px] font-black text-slate-400 uppercase block">Date</span>
-                    <span className="text-sm font-black text-slate-800">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block tracking-wider">Date</span>
+                    <span className="text-sm font-bold text-slate-800">
                       {booking.date ? format(parseISO(`${booking.date}T00:00:00`), 'MMM dd, yyyy') : 'N/A'}
                     </span>
                   </div>
                 </div>
                 <div className="p-5 flex items-center gap-3">
-                  <Clock className="h-5 w-5 text-emerald-500" />
+                  <Clock className="h-5 w-5 text-emerald-500/70" />
                   <div>
-                    <span className="text-[10px] font-black text-slate-400 uppercase block">Time Slot</span>
-                    <span className="text-sm font-black text-slate-800">{booking.time} ({booking.duration || 60}m)</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block tracking-wider">Time Slot</span>
+                    <span className="text-sm font-bold text-slate-800">{booking.time} ({booking.duration || 60}m)</span>
                   </div>
                 </div>
               </div>
@@ -141,17 +139,17 @@ export function BookingsTable({ bookings, onApprove, onReject, onComplete }: Boo
               <div className="p-6 bg-white space-y-4">
                 <div className="flex items-center gap-2">
                   <Info className="h-4 w-4 text-emerald-500" />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Services & Add-ons</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Services & Add-ons</span>
                 </div>
                 
                 <div className="flex flex-wrap gap-2 min-h-[32px]">
                   {(!booking.add_ons || booking.add_ons.length === 0) ? (
-                    <span className="text-xs font-bold text-slate-300 italic px-1">Standard Session</span>
+                    <span className="text-xs font-semibold text-slate-300 italic px-1">Standard Session</span>
                   ) : (
                     booking.add_ons.map((ao: any, i: number) => (
-                      <Badge key={i} variant="secondary" className="bg-emerald-50 text-emerald-700 border-none font-black text-[11px] pr-1.5 py-1 gap-1.5 rounded-xl">
+                      <Badge key={i} variant="secondary" className="bg-emerald-50 text-emerald-700 border-none font-bold text-[11px] pr-1.5 py-1 gap-1.5 rounded-xl">
                         {ao.name}
-                        {status !== 'completed' && (
+                        {status === 'approved' && (
                           <button 
                             onClick={() => removeAddOn(booking, i)}
                             className="bg-emerald-100 hover:bg-emerald-200 rounded-full p-0.5 transition-colors"
@@ -171,9 +169,9 @@ export function BookingsTable({ bookings, onApprove, onReject, onComplete }: Boo
                         key={opt.name} 
                         onClick={() => addExtraService(booking, opt)}
                         disabled={updatingId === booking.id}
-                        className="text-[10px] px-3 py-1.5 rounded-xl border border-slate-200 font-bold hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 transition-all disabled:opacity-50"
+                        className="text-[10px] px-3 py-1.5 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 transition-all disabled:opacity-50"
                       >
-                        + {opt.name} (₱{opt.price})
+                        + {opt.name}
                       </button>
                     ))}
                   </div>
@@ -183,40 +181,40 @@ export function BookingsTable({ bookings, onApprove, onReject, onComplete }: Boo
               {/* FOOTER ACTIONS */}
               <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-6">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Earnings</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Earnings</span>
                   <div className="flex items-center">
-                    <span className="text-emerald-600 font-black text-xl mr-1.5">₱</span>
+                    <span className="text-emerald-600 font-bold text-xl mr-1.5">₱</span>
                     <Input 
                       type="number"
-                      className="w-24 h-10 font-black text-2xl border-none bg-transparent p-0 focus-visible:ring-0 text-slate-900"
+                      className="w-24 h-10 font-extrabold text-2xl border-none bg-transparent p-0 focus-visible:ring-0 text-slate-900"
                       value={earningsInputs[booking.id] || ''}
                       onChange={(e) => setEarningsInputs({...earningsInputs, [booking.id]: Number(e.target.value)})}
                     />
                   </div>
                 </div>
 
-                <div className="flex-1 flex gap-3">
+                <div className="flex gap-3">
                   {status === 'pending' && (
                     <>
                       <Button 
                         variant="outline"
-                        className="flex-1 h-14 border-red-100 text-red-600 font-black rounded-[1.25rem] hover:bg-red-50"
+                        className="h-12 border-red-100 text-red-600 font-bold rounded-2xl hover:bg-red-50"
                         onClick={() => onReject(booking.id)}
                       >
-                        <XCircle className="w-5 h-5 mr-2" /> Reject
+                        Reject
                       </Button>
                       <Button 
-                        className="flex-1 h-14 bg-slate-900 text-white font-black rounded-[1.25rem] hover:bg-slate-800 shadow-lg"
+                        className="h-12 bg-slate-900 text-white font-bold rounded-2xl shadow-lg px-6"
                         onClick={() => onApprove(booking.id)}
                       >
-                        <CheckCircle2 className="w-5 h-5 mr-2" /> Approve
+                        Approve
                       </Button>
                     </>
                   )}
 
                   {status === 'approved' && (
                     <Button 
-                      className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-[1.25rem] shadow-lg"
+                      className="h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg px-8"
                       onClick={() => onComplete(booking.id, earningsInputs[booking.id])}
                       disabled={updatingId === booking.id}
                     >
